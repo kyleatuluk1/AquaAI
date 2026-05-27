@@ -1,0 +1,343 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Aqua AI</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.6.0/css/all.min.css">
+  <style>
+    body { background: #0a0f1c; font-family: system-ui; }
+    .sidebar { background: #0f1626; }
+    .chat-bg { background: #0a0f1c; }
+    .message { max-width: 75%; }
+    .history-item { transition: all 0.2s; }
+    .history-item:hover { background: #1a2338; }
+    .history-item.active { background: #1e2a4a; border-left: 3px solid #22d3ee; }
+  </style>
+</head>
+<body class="text-white flex h-screen overflow-hidden">
+
+  <!-- Sidebar -->
+  <div class="w-72 sidebar border-r border-gray-800 flex flex-col">
+    <div class="p-4 flex items-center gap-3 border-b border-gray-800">
+      <div class="w-9 h-9 rounded-2xl bg-gradient-to-br from-cyan-400 to-blue-600 flex items-center justify-center text-2xl">🌊</div>
+      <div class="font-bold text-2xl tracking-tight">Aqua AI</div>
+    </div>
+
+    <div class="p-3">
+      <button onclick="newChat()" 
+              class="w-full flex items-center gap-3 hover:bg-white/10 py-3 px-4 rounded-2xl text-left font-medium">
+        <i class="fas fa-plus"></i>
+        <span>New Conversation</span>
+      </button>
+    </div>
+
+    <!-- Search -->
+    <div class="px-4 mb-2">
+      <div class="relative">
+        <input id="search-input" type="text" 
+               class="w-full bg-gray-900 border border-gray-700 rounded-2xl py-3 px-4 pl-10 text-sm focus:border-cyan-400 outline-none"
+               placeholder="Search chats...">
+        <i class="fas fa-search absolute left-4 top-3.5 text-gray-500"></i>
+      </div>
+    </div>
+
+    <!-- Conversation History -->
+    <div class="px-3 flex-1 overflow-y-auto" id="history-list"></div>
+
+    <div class="px-3 mt-2">
+      <div class="text-xs text-gray-400 px-4 mb-2">MODES</div>
+      <div onclick="setMode('normal')" class="mode-btn flex items-center gap-3 py-3 px-4 rounded-2xl hover:bg-white/10 cursor-pointer" id="mode-normal">🌊 Normal Flow</div>
+      <div onclick="setMode('creative')" class="mode-btn flex items-center gap-3 py-3 px-4 rounded-2xl hover:bg-white/10 cursor-pointer" id="mode-creative">✨ Creative</div>
+      <div onclick="setMode('deep')" class="mode-btn flex items-center gap-3 py-3 px-4 rounded-2xl hover:bg-white/10 cursor-pointer" id="mode-deep">🧠 Deep Thinker</div>
+      <div onclick="setMode('fun')" class="mode-btn flex items-center gap-3 py-3 px-4 rounded-2xl hover:bg-white/10 cursor-pointer" id="mode-fun">🐋 Ocean Fun</div>
+      <div onclick="setMode('pro')" class="mode-btn flex items-center gap-3 py-3 px-4 rounded-2xl hover:bg-white/10 cursor-pointer" id="mode-pro">💼 Professional</div>
+    </div>
+
+    <div class="mt-auto p-4 border-t border-gray-800 space-y-2">
+      <button onclick="exportChats()" 
+              class="w-full flex items-center gap-3 hover:bg-white/10 py-3 px-4 rounded-2xl text-sm">
+        <i class="fas fa-download"></i>
+        <span>Export All Chats</span>
+      </button>
+      <button onclick="toggleSettings()" 
+              class="w-full flex items-center gap-3 hover:bg-white/10 py-3 px-4 rounded-2xl">
+        <i class="fas fa-cog"></i>
+        <span>Settings</span>
+      </button>
+    </div>
+  </div>
+
+  <!-- Main Chat Area -->
+  <div class="flex-1 flex flex-col">
+    <div class="h-14 border-b border-gray-800 bg-black/50 flex items-center px-6 justify-between">
+      <div class="flex items-center gap-3">
+        <div class="text-lg font-medium">Aqua AI</div>
+        <div id="current-mode" class="text-xs px-3 py-1 bg-cyan-400/10 text-cyan-400 rounded-full">Normal Flow</div>
+      </div>
+      <button onclick="generateImage()" class="flex items-center gap-2 text-sm hover:text-cyan-400">
+        <i class="fas fa-image"></i> Generate Image
+      </button>
+    </div>
+
+    <div id="chat-messages" class="flex-1 overflow-y-auto chat-bg p-8 space-y-8"></div>
+
+    <div class="p-6 border-t border-gray-800 bg-black/50">
+      <div class="max-w-4xl mx-auto flex gap-3">
+        <button onclick="startVoiceInput()" class="w-11 h-11 bg-gray-800 hover:bg-gray-700 rounded-2xl flex items-center justify-center">
+          <i class="fas fa-microphone"></i>
+        </button>
+        <label class="cursor-pointer">
+          <input type="file" id="image-upload" accept="image/*" class="hidden" onchange="handleImageUpload(event)">
+          <div class="w-11 h-11 bg-gray-800 hover:bg-gray-700 rounded-2xl flex items-center justify-center">
+            <i class="fas fa-image"></i>
+          </div>
+        </label>
+        <input id="user-input" type="text" 
+               class="flex-1 bg-gray-900 border border-gray-700 focus:border-cyan-400 rounded-3xl px-6 py-4 outline-none"
+               placeholder="Message Aqua AI...">
+        <button onclick="sendMessage()" 
+                class="bg-gradient-to-r from-cyan-400 to-blue-500 text-black w-12 h-12 rounded-3xl flex items-center justify-center">
+          <i class="fas fa-paper-plane"></i>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Settings Modal -->
+  <div id="settings-modal" class="hidden fixed inset-0 bg-black/80 flex items-center justify-center z-50">
+    <div class="bg-[#0f1626] p-8 rounded-3xl w-full max-w-md border border-cyan-400/30">
+      <h2 class="text-xl font-bold mb-6">API Settings</h2>
+      <div class="space-y-4">
+        <div>
+          <label class="text-sm block mb-1">Groq API Key</label>
+          <input id="groq-key" type="password" class="w-full bg-black border border-gray-700 rounded-2xl p-4">
+        </div>
+        <div>
+          <label class="text-sm block mb-1">OpenAI API Key (Images)</label>
+          <input id="openai-key" type="password" class="w-full bg-black border border-gray-700 rounded-2xl p-4">
+        </div>
+      </div>
+      <button onclick="saveKeys()" class="w-full mt-6 bg-cyan-500 text-black py-4 rounded-2xl font-bold">Save Keys</button>
+      <button onclick="toggleSettings()" class="w-full mt-3 text-gray-400">Cancel</button>
+    </div>
+  </div>
+
+  <script>
+    let groqKey = localStorage.getItem('aqua_groq_key') || '';
+    let openaiKey = localStorage.getItem('aqua_openai_key') || '';
+    let conversations = JSON.parse(localStorage.getItem('aqua_conversations')) || [];
+    let currentChatId = null;
+    let currentMode = 'normal';
+    let messages = [];
+
+    const modeNames = { normal: "Normal Flow", creative: "Creative", deep: "Deep Thinker", fun: "Ocean Fun", pro: "Professional" };
+    const systemPrompts = {
+      normal: "You are Aqua AI, helpful, truthful, and witty.",
+      creative: "You are highly creative Aqua AI. Use ocean metaphors and poetic language.",
+      deep: "You are a deep philosophical thinker.",
+      fun: "You are playful Aqua AI. Use ocean puns and high energy.",
+      pro: "You are professional Aqua AI. Be concise and expert."
+    };
+
+    function saveConversations() {
+      localStorage.setItem('aqua_conversations', JSON.stringify(conversations));
+    }
+
+    function renderHistory(filteredChats = conversations) {
+      const container = document.getElementById('history-list');
+      container.innerHTML = `<div class="text-xs text-gray-400 px-4 mb-2">HISTORY</div>`;
+
+      filteredChats.forEach(chat => {
+        const el = document.createElement('div');
+        el.className = `history-item group flex items-center gap-3 py-3 px-4 rounded-2xl cursor-pointer mb-1 ${chat.id === currentChatId ? 'active' : ''}`;
+        el.innerHTML = `
+          <i class="fas fa-comment text-cyan-400"></i>
+          <span class="truncate flex-1">${chat.title}</span>
+          <button onclick="event.stopImmediatePropagation(); deleteChat('${chat.id}');" 
+                  class="hidden group-hover:block text-red-400 hover:text-red-500">
+            <i class="fas fa-trash"></i>
+          </button>
+        `;
+        el.onclick = () => loadChat(chat.id);
+        container.appendChild(el);
+      });
+
+      if (filteredChats.length === 0) {
+        container.innerHTML += `<div class="text-center text-gray-500 py-8">No chats found</div>`;
+      }
+    }
+
+    function deleteChat(id) {
+      if (!confirm("Delete this conversation?")) return;
+      conversations = conversations.filter(c => c.id !== id);
+      saveConversations();
+      if (currentChatId === id) {
+        newChat();
+      } else {
+        renderHistory();
+      }
+    }
+
+    function exportChats() {
+      if (conversations.length === 0) return alert("No chats to export.");
+      const dataStr = JSON.stringify(conversations, null, 2);
+      const dataUri = 'data:application/json;charset=utf-8,'+ encodeURIComponent(dataStr);
+      const exportFileDefaultName = `aqua-ai-chats-${new Date().toISOString().slice(0,10)}.json`;
+      
+      const linkElement = document.createElement('a');
+      linkElement.setAttribute('href', dataUri);
+      linkElement.setAttribute('download', exportFileDefaultName);
+      linkElement.click();
+    }
+
+    function createNewChat() {
+      const newChat = {
+        id: Date.now().toString(),
+        title: "New Conversation",
+        messages: [],
+        mode: 'normal',
+        timestamp: Date.now()
+      };
+      conversations.unshift(newChat);
+      saveConversations();
+      loadChat(newChat.id);
+      renderHistory();
+    }
+
+    function loadChat(id) {
+      currentChatId = id;
+      const chat = conversations.find(c => c.id === id);
+      if (!chat) return;
+      messages = chat.messages;
+      currentMode = chat.mode || 'normal';
+      document.getElementById('current-mode').textContent = modeNames[currentMode];
+      setMode(currentMode);
+      renderMessages();
+      renderHistory();
+    }
+
+    function renderMessages() {
+      const container = document.getElementById('chat-messages');
+      container.innerHTML = '';
+      messages.forEach(msg => addMessage(msg.content, msg.role, false));
+    }
+
+    function addMessage(text, role, save = true) {
+      const container = document.getElementById('chat-messages');
+      const isUser = role === 'user';
+
+      const html = `
+        <div class="flex ${isUser ? 'justify-end' : ''} message">
+          ${!isUser ? `<div class="w-8 h-8 rounded-xl bg-gradient-to-br from-cyan-400 to-blue-600 flex items-center justify-center text-xl flex-shrink-0">🌊</div>` : ''}
+          <div class="${isUser ? 'bg-cyan-500 text-black rounded-3xl rounded-tr-none' : 'bg-gray-800 rounded-3xl rounded-tl-none'} p-5">
+            <p>${text}</p>
+          </div>
+        </div>`;
+      container.innerHTML += html;
+      container.scrollTop = container.scrollHeight;
+
+      if (save && currentChatId) {
+        const chat = conversations.find(c => c.id === currentChatId);
+        if (chat) {
+          chat.messages.push({role, content: text});
+          if (chat.messages.length === 1 && role === 'user') {
+            chat.title = text.substring(0, 40) + (text.length > 40 ? '...' : '');
+          }
+          saveConversations();
+          renderHistory();
+        }
+      }
+    }
+
+    async function sendMessage() {
+      const input = document.getElementById('user-input');
+      const text = input.value.trim();
+      if (!text || !currentChatId) return;
+      if (!groqKey) return alert("Set Groq API key in Settings");
+
+      addMessage(text, 'user');
+      input.value = "";
+
+      const thinkingId = 't' + Date.now();
+      document.getElementById('chat-messages').innerHTML += `
+        <div id="${thinkingId}" class="flex gap-4">
+          <div class="w-8 h-8 rounded-xl bg-gradient-to-br from-cyan-400 to-blue-600 flex items-center justify-center">🌊</div>
+          <div class="bg-gray-800 rounded-3xl rounded-tl-none p-5">Thinking deeply...</div>
+        </div>`;
+      document.getElementById('chat-messages').scrollTop = 1e9;
+
+      try {
+        const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+          method: 'POST',
+          headers: { 'Authorization': `Bearer ${groqKey}`, 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            model: "llama-3.3-70b-versatile",
+            messages: [{role: "system", content: systemPrompts[currentMode]}, ...messages],
+            temperature: currentMode === 'creative' ? 1.0 : 0.75,
+            max_tokens: 1200
+          })
+        });
+        const data = await res.json();
+        document.getElementById(thinkingId).remove();
+        addMessage(data.choices[0].message.content, 'assistant');
+      } catch (e) {
+        document.getElementById(thinkingId).remove();
+        addMessage("Sorry, I couldn't process that.", 'assistant');
+      }
+    }
+
+    function setMode(mode) {
+      currentMode = mode;
+      document.getElementById('current-mode').textContent = modeNames[mode];
+      document.querySelectorAll('.mode-btn').forEach(el => el.classList.remove('bg-cyan-400/20', 'text-cyan-400'));
+      document.getElementById(`mode-${mode}`).classList.add('bg-cyan-400/20', 'text-cyan-400');
+
+      if (currentChatId) {
+        const chat = conversations.find(c => c.id === currentChatId);
+        if (chat) chat.mode = mode;
+        saveConversations();
+      }
+    }
+
+    function toggleSettings() {
+      document.getElementById('settings-modal').classList.toggle('hidden');
+    }
+
+    function saveKeys() {
+      const g = document.getElementById('groq-key').value.trim();
+      const o = document.getElementById('openai-key').value.trim();
+      if (g) { groqKey = g; localStorage.setItem('aqua_groq_key', g); }
+      if (o) { openaiKey = o; localStorage.setItem('aqua_openai_key', o); }
+      alert("✅ Keys saved!");
+      toggleSettings();
+    }
+
+    function newChat() { createNewChat(); }
+    function generateImage() { alert("Image generation coming soon!"); }
+    function startVoiceInput() { alert("Voice input ready (demo)"); }
+    function handleImageUpload() { alert("Image uploaded (Vision ready)"); }
+
+    // Search functionality
+    document.getElementById('search-input').addEventListener('input', (e) => {
+      const term = e.target.value.toLowerCase();
+      const filtered = conversations.filter(chat => 
+        chat.title.toLowerCase().includes(term)
+      );
+      renderHistory(filtered);
+    });
+
+    // Keyboard
+    document.getElementById('user-input').addEventListener('keypress', e => {
+      if (e.key === 'Enter') sendMessage();
+    });
+
+    // Initialize
+    if (conversations.length === 0) createNewChat();
+    else loadChat(conversations[0].id);
+    
+    renderHistory();
+  </script>
+</body>
+</html>
